@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.MuiTableCell-root {
+  color: #fff !important;
+}
+
+.MuiTableHead-root .MuiTableCell-root {
+  font-weight: 600;
+}
+
