@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { ErrorDisplay } from './ErrorDisplay';
+import { usePageReload } from '../../hooks';
 
 interface ApiDataContainerProps {
   isLoading: boolean;
@@ -15,9 +16,7 @@ interface ApiDataContainerProps {
   emptyComponent?: ReactNode;
 }
 
-/**
- * Component for handling API data fetching with loading and error states
- */
+
 export const ApiDataContainer: React.FC<ApiDataContainerProps> = ({
   isLoading,
   error,
@@ -30,8 +29,11 @@ export const ApiDataContainer: React.FC<ApiDataContainerProps> = ({
   errorComponent,
   emptyComponent,
 }) => {
-  // Show loading state
-  if (isLoading) {
+  // Use the page reload hook to detect page reloads
+  const { isReloading } = usePageReload();
+  
+  // Show loading spinner if data is loading or page is reloading
+  if (isLoading || isReloading) {
     return loadingComponent || <LoadingSpinner text={loadingText} />;
   }
 

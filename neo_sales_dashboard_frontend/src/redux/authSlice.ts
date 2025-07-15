@@ -22,7 +22,7 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials: LoginCredentials, { rejectWithValue }) => {
     try {
-      const success = await apiClient.login(credentials.username, credentials.password);
+      const success = await apiClient.login(credentials.email, credentials.password);
       
       if (!success) {
         throw new Error('Invalid credentials');

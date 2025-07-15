@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../redux/hooks';
 import { LoadingSpinner } from '../ui';
+import { usePageReload } from '../../hooks';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -10,9 +11,10 @@ interface ProtectedRouteProps {
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isLoggedIn, isLoading } = useAppSelector(state => state.auth);
   const location = useLocation();
+  const { isReloading } = usePageReload();
 
-  // Show loading spinner while checking authentication
-  if (isLoading) {
+  // Show loading spinner while checking authentication or during page reload
+  if (isLoading || isReloading) {
     return <LoadingSpinner fullPage text="Verifying authentication..." />;
   }
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { ErrorDisplay } from './ErrorDisplay';
+import { usePageReload } from '../../hooks';
 
 interface WithLoadingStateProps {
   isLoading: boolean;
@@ -24,7 +25,11 @@ export const withLoadingState = <P extends object>(
     onRetry,
     ...props
   }: WithLoadingStateProps & P) => {
-    if (isLoading) {
+    // Use the page reload hook to detect page reloads
+    const { isReloading } = usePageReload();
+    
+    // Show loading spinner if data is loading or page is reloading
+    if (isLoading || isReloading) {
       return <LoadingSpinner fullPage text={loadingText} />;
     }
 

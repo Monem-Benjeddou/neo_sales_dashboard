@@ -19,7 +19,7 @@ class CollectionSerializer(serializers.ModelSerializer):
         return obj.cards.count()
 
 class CardSerializer(serializers.ModelSerializer):
-    collection = CollectionSerializer(read_only=True)
+    collection = serializers.PrimaryKeyRelatedField(queryset=Collection.objects.all())
     class Meta:
         model = Card
         fields = '__all__'

@@ -5,25 +5,52 @@ from rest_framework import status
 
 from ..serializers import UserSerializer
 from ..services.user_service import UserService
+from ..utils.response_utils import api_response, error_response
+from ..permissions import IsSuperUserOrReadOnly
 
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
     user_service = UserService()
+    
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'PATCH']:
+            return [IsSuperUserOrReadOnly()]
+        return [IsAuthenticated()]
 
     def get(self, request, format=None):
-        user_data = self.user_service.get_user_profile_data(request.user)
-        return Response(user_data, status=status.HTTP_200_OK)
+        try:
+            user_data = self.user_service.get_user_profile_data(request.user)
+            return api_response(data=user_data)
+        except Exception as e:
+            return error_response(
+                message=f"Failed to retrieve user profile: {str(e)}",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def put(self, request, format=None):
         serializer = UserSerializer(request.user, data=request.data, partial=False)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return api_response(
+                data=serializer.data,
+                message="User profile updated successfully"
+            )
+        return error_response(
+            message="Invalid user data",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            details=serializer.errors
+        )
 
     def patch(self, request, format=None):
         serializer = UserSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return api_response(
+                data=serializer.data,
+                message="User profile updated successfully"
+            )
+        return error_response(
+            message="Invalid user data",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            details=serializer.errors
+        )

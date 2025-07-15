@@ -1,6 +1,7 @@
 from django.db import models
 
 class Collection(models.Model):
+    id = models.AutoField(primary_key=True)
     STATUS_CHOICES = [
         ('PENDING', 'Pending'),
         ('IN_PRODUCTION', 'In Production'),

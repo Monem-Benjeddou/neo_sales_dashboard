@@ -9,4 +9,9 @@
 .MuiTableHead-root .MuiTableCell-root {
   font-weight: 600;
 }
-
+.MuiChartsAxis-tick{
+  stroke:'none !important',
+}
+.css-kqz1gp-MuiChartsAxis-root-MuiChartsYAxis-root .MuiChartsAxis-tick{
+    stroke:'none !important',
+}

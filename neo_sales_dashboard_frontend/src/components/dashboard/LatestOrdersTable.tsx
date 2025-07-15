@@ -13,10 +13,10 @@ import {
   Box
 } from '@mui/material';
 import { MoreVert, MoreHoriz } from '@mui/icons-material';
-import { Order } from '../../types/api'; // Import the Order type
+import { Order } from '../../types/api';
 
 interface LatestOrdersTableProps {
-  tableData: Order[]; // Use the Order type directly
+  tableData: Order[];
 }
 
 export const LatestOrdersTable: React.FC<LatestOrdersTableProps> = ({ tableData }) => {
@@ -63,6 +63,8 @@ export const LatestOrdersTable: React.FC<LatestOrdersTableProps> = ({ tableData 
             <TableRow sx={{ backgroundColor: 'rgba(43, 19, 114, 0.8)' }}>
               <TableCell sx={headerCellStyle}>Order ID</TableCell>
               <TableCell sx={headerCellStyle}>Order Date</TableCell>
+              <TableCell sx={headerCellStyle}>Card Name</TableCell>
+              <TableCell sx={headerCellStyle}>Copy Number</TableCell>
               <TableCell sx={headerCellStyle}>Payment</TableCell>
               <TableCell sx={headerCellStyle}>Status</TableCell>
               <TableCell sx={headerCellStyle}>Action</TableCell>
@@ -70,14 +72,17 @@ export const LatestOrdersTable: React.FC<LatestOrdersTableProps> = ({ tableData 
           </TableHead>
 
           <TableBody>
-            {tableData.map((row) => (
-              <TableRow key={row.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                <TableCell sx={{ color: 'white', py: 1.5 }}>#{row.id}</TableCell>
-                <TableCell sx={{ color: 'white', py: 1.5 }}>{row.orderDateFormatted}</TableCell>
-                <TableCell sx={{ color: 'white', py: 1.5 }}>$ {parseFloat(row.orderValue).toFixed(2)}</TableCell>
+            {tableData.map((row, index) => (
+              // Add the key prop here
+              <TableRow key={row.orderId} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                <TableCell sx={{ color: 'white', py: 1.5 }}>{row.orderId}</TableCell>
+                <TableCell sx={{ color: 'white', py: 1.5 }}>{row.orderDate}</TableCell>
+                <TableCell sx={{ color: 'white', py: 1.5 }}>{row.cardName}</TableCell>
+                <TableCell sx={{ color: 'white', py: 1.5 }}>{row.copyNumber}</TableCell>
+                <TableCell sx={{ color: 'white', py: 1.5 }}>{row.orderValue}</TableCell>
                 <TableCell sx={{ py: 1.5 }}>
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${row.status === 'COMPLETED' ? 'text-green-400' : 'text-yellow-400'}`}>
-                    {row.statusDisplay}
+                    {row.status}
                   </span>
                 </TableCell>
                 <TableCell sx={{ py: 1.5 }}>

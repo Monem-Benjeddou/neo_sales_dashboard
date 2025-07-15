@@ -1,12 +1,14 @@
+import redis
+import json
 from django.utils import timezone
 from datetime import timedelta
-from django.core.cache import cache
-
 from .user_service import UserService
 from .collection_service import CollectionService
 from .card_service import CardService
 from .order_service import OrderService
+import logging
 
+logger = logging.getLogger(__name__)
 
 class DashboardService:
     def __init__(self):
@@ -14,6 +16,15 @@ class DashboardService:
         self.collection_service = CollectionService()
         self.card_service = CardService()
         self.order_service = OrderService()
+        try:
+            self.redis_client = redis.Redis(host='localhost', port=6379, db=0, socket_connect_timeout=1)
+            self.redis_client.ping()
+            logger.info("Successfully connected to Redis.")
+            self.redis_connected = True
+        except redis.exceptions.ConnectionError as e:
+            logger.error(f"Could not connect to Redis: {e}. Caching will be disabled.")
+            self.redis_client = None
+            self.redis_connected = False
 
     def _calculate_growth(self, current_value: float, previous_value: float) -> str:
         if previous_value == 0:
@@ -24,12 +35,23 @@ class DashboardService:
 
     def get_kpis_data(self):
         cache_key = "dashboard_kpis_data"
-        cache_timeout = 60 * 5
+        cache_expiration_seconds = 60 * 60
 
-        kpis_data = cache.get(cache_key)
+        cached_data = None
+        if self.redis_connected:
+            try:
+                cached_data = self.redis_client.get(cache_key)
+                if cached_data:
+                    logger.info("Retrieving KPI data from Redis cache.")
+                    return json.loads(cached_data)
+            except redis.exceptions.ConnectionError as e:
+                logger.error(f"Redis connection error during GET: {e}. Proceeding without cache.")
+                self.redis_connected = False
+            except json.JSONDecodeError as e:
+                logger.error(f"Error decoding cached data from Redis: {e}. Fetching new data.")
+                cached_data = None
 
-        if kpis_data is not None:
-            return kpis_data
+        logger.info("KPI data not found in cache or Redis not connected, fetching from services.")
 
         today = timezone.localdate()
         current_month = today.month
@@ -48,9 +70,9 @@ class DashboardService:
 
         new_cards_current_month = self.card_service.get_cards_count_for_month(current_year, current_month)
         new_cards_previous_month = self.card_service.get_cards_count_for_month(previous_year, previous_month)
-
         collections_created_current_month = self.collection_service.get_collections_count_for_month(current_year, current_month)
         collections_created_previous_month = self.collection_service.get_collections_count_for_month(previous_year, previous_month)
+        print('b')
 
         users_joined_current_month = self.user_service.get_users_count_for_month(current_year, current_month)
         users_joined_previous_month = self.user_service.get_users_count_for_month(previous_year, previous_month)
@@ -76,6 +98,13 @@ class DashboardService:
             'metrics_growth': metrics_growth,
         }
 
-        cache.set(cache_key, kpis_data, timeout=cache_timeout)
+        if self.redis_connected:
+            try:
+                self.redis_client.setex(cache_key, cache_expiration_seconds, json.dumps(kpis_data))
+                logger.info("KPI data stored in Redis cache.")
+            except redis.exceptions.ConnectionError as e:
+                logger.error(f"Redis connection error during SET: {e}. Data not cached.")
+            except Exception as e:
+                logger.error(f"An unexpected error occurred while caching data: {e}")
 
         return kpis_data

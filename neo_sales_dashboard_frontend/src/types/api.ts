@@ -10,6 +10,21 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
 }
+export interface PaginationMetadata {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+}
+export interface PaginatedResult<T> {
+    items: T[];
+    pagination: {
+        page: number;
+        pageSize: number;
+        totalItems: number;
+        totalPages: number;
+    };
+}
 
 export interface DashboardKpiData {
   avgOrderValue: number;
@@ -61,17 +76,18 @@ export interface Card {
 }
 
 export interface Order {
-  id: number;
-  user: UserProfile; // Nested user object
-  orderValue: string; // Decimal field from Django
+  orderId: string;
+  user: UserProfile;
+  cardName:string;
+  copyNumber:string;
+  orderValue: string;
   status: 'PROCESSING' | 'COMPLETED' | 'CANCELLED';
   statusDisplay: string;
-  orderDate: string; // ISO 8601 datetime string
+  orderDate: string;
   orderDateFormatted: string;
   updatedAt: string;
 }
 
-// Request Bodies
 export interface LoginRequest {
   email: string;
   password: string;

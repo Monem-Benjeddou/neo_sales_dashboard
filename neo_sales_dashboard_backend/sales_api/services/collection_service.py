@@ -1,5 +1,4 @@
 from ..repositories.collection_repository import CollectionRepository
-from django.utils import timezone as dj_timezone  # optional for now()
 from datetime import datetime, timedelta, timezone as dt_timezone
 
 class CollectionService:
@@ -9,11 +8,22 @@ class CollectionService:
     def get_total_collections_count(self):
         return self.collection_repo.get_count()
 
-    def get_detailed_collections_list(self):
-        collections_queryset = self.collection_repo.get_all_with_card_count().order_by('id')
+    def get_detailed_collections_list(self, filters=None, page=1, page_size=10):
+        # Get filtered queryset
+        collections_queryset = self.collection_repo.get_all_with_card_count(filters=filters).order_by('id')
+
+        # Calculate pagination values
+        total_items = collections_queryset.count()
+        total_pages = (total_items + page_size - 1) // page_size  # Ceiling division
+        
+        # Apply pagination
+        start_index = (page - 1) * page_size
+        end_index = start_index + page_size
+        paginated_queryset = collections_queryset[start_index:end_index]
+        
 
         collections_data = []
-        for collection in collections_queryset:
+        for collection in paginated_queryset:
             collections_data.append({
                 'collectionId': collection.id,
                 'collectionName': collection.name,
@@ -23,12 +33,19 @@ class CollectionService:
                 'category': collection.get_category_display(),
                 'status': collection.get_status_display(),
             })
-        return collections_data
+        
+        # Return data with pagination metadata
+        return {
+            'items': collections_data,
+            'pagination': {
+                'page': page,
+                'pageSize': page_size,
+                'totalItems': total_items,
+                'totalPages': total_pages
+            }
+        }
 
     def get_collections_count_for_month(self, year: int, month: int) -> int:
-        """
-        Counts collections created in a specific month.
-        """
         start_of_month = datetime(year, month, 1, tzinfo=dt_timezone.utc)
         if month == 12:
             end_of_month = datetime(year + 1, 1, 1, tzinfo=dt_timezone.utc) - timedelta(microseconds=1)

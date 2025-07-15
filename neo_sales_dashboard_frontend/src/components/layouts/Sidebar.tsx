@@ -1,30 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { styled } from '@mui/material/styles';
-import { Drawer, List, ListItem, ListItemIcon, ListItemText, Box, IconButton, Button } from '@mui/material';
+import { Drawer, List, ListItem, ListItemIcon, Box, useMediaQuery, Theme } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAppSelector, useAppDispatch } from '../../redux/hooks';
-
-const sidebarWidth = 90; 
+import { useAppSelector } from '../../redux/hooks';
+import settings from '/assets/icons/settings.svg'
+const sidebarWidth = 60; // Smaller sidebar width
 
 const StyledDrawer = styled(Drawer)(({ theme }) => ({
   width: sidebarWidth,
   flexShrink: 0,
-  overflow:'hidden',
+  overflow: 'hidden',
   whiteSpace: 'nowrap',
-  transition: theme.transitions.create('width', {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.enteringScreen,
-  }),
+  [theme.breakpoints.down('sm')]: {
+    width: '100%',
+    height: 60,
+    position: 'fixed',
+    bottom: 0,
+    zIndex: 1300,
+  },
   '& .MuiDrawer-paper': {
     width: sidebarWidth,
-  
     boxSizing: 'border-box',
     backgroundColor: 'rgba(29, 0, 84, 0.6)',
     borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-    transition: theme.transitions.create('width', {
-      easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
     overflowX: 'hidden',
     height: '100vh',
     position: 'fixed',
@@ -34,111 +32,153 @@ const StyledDrawer = styled(Drawer)(({ theme }) => ({
     flexDirection: 'column',
     alignItems: 'center',
     [theme.breakpoints.down('sm')]: {
-      width: 60,
-    },
-    [theme.breakpoints.up('sm')]: {
-      width: sidebarWidth,
+      width: '100%',
+      height: 60,
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      top: 'auto',
+      bottom: 0,
+      borderRight: 'none',
+      borderTop: '1px solid rgba(255, 255, 255, 0.1)',
     },
   },
 }));
 
 const topNavigationItems = [
-  { text: 'Home', iconSrc: '../assets/icons/home.svg', path: '/home', width: 28, height: 28 },
-  { text: 'Dashboard', iconSrc: '../assets/icons/dashboard.svg', path: '/dashboard', width: 28, height: 28 },
-  { text: 'Store', iconSrc: '../assets/icons/store.svg', path: '/store', width: 28, height: 28 },
-  { text: 'Collections', iconSrc: '../assets/icons/collection.svg', path: '/collections', width: 28, height: 28 },
-  { text: 'Media', iconSrc: '../assets/icons/media.svg', path: '/media', width: 28, height: 40 },
+  { text: 'Home', iconSrc: '/assets/icons/home.svg', path: '/home' },
+  { text: 'Dashboard', iconSrc: '/assets/icons/dashboard.svg', path: '/dashboard', },
+  { text: 'Store', iconSrc: '/assets/icons/store.svg', path: '/store' },
+  { text: 'Collections', iconSrc: '/assets/icons/collection.svg', path: '/collections' },
+  { text: 'Media', iconSrc: '/assets/icons/media.svg', path: '/media' },
 ];
 
 const bottomNavigationItems = [
-  { text: 'Settings', iconSrc: '../assets/icons/settings.svg', path: '/settings', width: 31, height: 31 },
-  { text: 'Logout', iconSrc: '../assets/icons/exit.svg', action: 'logout', width: 31, height: 31 }, 
+  { text: 'Settings', iconSrc: '/assets/icons/settings.svg', path: '/settings' },
+  { text: 'Logout', iconSrc: '/assets/icons/exit.svg', action: 'logout' },
 ];
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const themeMode = useAppSelector(state => state.theme.mode);
-  const dispatch = useAppDispatch();
+  const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
 
   const handleLogout = () => {
     navigate('/logout');
   };
+
+  // Combine navigation items for mobile view
+  const mobileNavigationItems = [...topNavigationItems.slice(0, 4), bottomNavigationItems[1]];
+
   return (
-    
     <StyledDrawer
       variant="permanent"
-      anchor="left"
+      anchor={isMobile ? 'bottom' : 'left'}
       open={true}
     >
-      <Box className="py-7">
-        <img src='../assets/icons/logo.svg' alt="Logo" className="w-[29px] h-[29px]" />
-      </Box>
-
-      <List className="h-full flex flex-col w-full overflow-y-hidden  overflow-x-hidden">
-        <Box className="flex flex-col w-full">
-          {topNavigationItems.map((item) => (
-            <ListItem
-              button
-              key={item.text}
-              onClick={() => navigate(item.path)}
-              selected={location.pathname === item.path}
-              className="flex justify-center my-2"
-              sx={{
-                borderRadius: 1,
-                '&.Mui-selected': {
-                  color:'rgba(255, 4, 180, 1)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                  },
-                },
-              }}
-            >
-              <ListItemIcon className="min-w-0 justify-center">
-                <img
-                  src={item.iconSrc}
-                  alt={item.text}
-                  style={{
-                    width: item.width,
-                    height: item.height,
-                    color:'rgba(194, 173, 235, 1)',
-
-                  }}
-                />
-              </ListItemIcon>
-              <ListItemText
-                primary={item.text}
-                sx={{
-                  opacity: 0,
-                  width: 0,
-                  transition: 'opacity 0.3s ease-in-out, width 0.3s ease-in-out',
-                  color: location.pathname === item.path ? 'white' : 'rgba(255, 255, 255, 0.5)',
-                  '& .MuiListItemText-primary': { fontWeight: location.pathname === item.path ? 600 : 400 },
-                }}
-              />
-            </ListItem>
-          ))}
+      {!isMobile && (
+        <Box className="py-7">
+          <img src='/assets/icons/logo.svg' alt="Logo" className="w-[37px] h-[37px]" />
         </Box>
+      )}
 
-        <Box className="flex-grow"></Box>
+      <List className={isMobile ? "flex flex-row justify-around w-full" : "h-full flex flex-col w-full"}>
+        {!isMobile ? (
+          <>
+            <Box className="flex flex-col w-full items-center" sx={{marginTop:'4.5rem'}}>
+              {topNavigationItems.map((item) => (
+                <ListItem
+                  button
+                  key={item.text}
+                  onClick={() => navigate(item.path)}
+                  selected={location.pathname === item.path}
+                  className="flex justify-center my-10"
+                  sx={{
+                    paddingRight:'0',
+                    paddingLeft:'0',
+                    width: 'auto',
+                    minWidth: 'auto',
+                    '&.Mui-selected': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                      },
+                    },
+                  }}
+                >
+                  <ListItemIcon className="min-w-0 justify-center">
+                    <img
+                      src={item.iconSrc}
+                      alt={item.text}
+                      style={{
+                        width: 20,
+                        height: 20,
+                      }}
+                    />
+                  </ListItemIcon>
+                </ListItem>
+              ))}
+            </Box>
 
-        <Box className="flex flex-col w-full pb-5">
-          {bottomNavigationItems.map((item) => (
+            <Box className="flex flex-col w-full items-center" sx={{marginTop:'7.5rem'}}>
+              {bottomNavigationItems.map((item) => (
+                <ListItem
+                  button
+                  key={item.text}
+                  onClick={() => {
+                    if (item.action === 'logout') {
+                      handleLogout();
+                    } else if (item.path) { 
+                      navigate(item.path);
+                    }
+                  }}
+                  selected={location.pathname === item.path}
+                  className="flex justify-center my-10"
+                  sx={{
+                    paddingRight:'0',
+                    paddingLeft:'0',
+                    width: 'auto',
+                    minWidth: 'auto',
+                    '&.Mui-selected': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                      },
+                    },
+                  }}
+                >
+                  <ListItemIcon className="min-w-0 justify-center">
+                    <img
+                      src={item.iconSrc}
+                      alt={item.text}
+                      style={{
+                        width: 20,
+                        height: 20,
+                      }}
+                    />
+                  </ListItemIcon>
+                </ListItem>
+              ))}
+            </Box>
+          </>
+        ) : (
+          // Mobile view - horizontal navigation
+          mobileNavigationItems.map((item) => (
             <ListItem
               button
               key={item.text}
               onClick={() => {
                 if (item.action === 'logout') {
                   handleLogout();
-                } else if (item.path) { // Check if path exists before navigating
+                } else if (item.path) { 
                   navigate(item.path);
                 }
               }}
-              selected={item.path ? location.pathname === item.path : false} // Conditional selection for items with a path
-              className="flex justify-center my-2"
+              selected={location.pathname === item.path}
               sx={{
-                borderRadius: 1,
+                flex: 1,
+                justifyContent: 'center',
+                padding: '8px 0',
                 '&.Mui-selected': {
                   backgroundColor: 'rgba(255, 255, 255, 0.1)',
                   '&:hover': {
@@ -152,27 +192,14 @@ export const Sidebar: React.FC = () => {
                   src={item.iconSrc}
                   alt={item.text}
                   style={{
-                    width: item.width,
-                    height: item.height,
-                    filter: (item.path && location.pathname === item.path) // Conditional filter for selected state
-                      ? 'invert(100%) sepia(100%) saturate(0%) hue-rotate(247deg) brightness(100%) contrast(100%)'
-                      : (themeMode === 'dark' ? 'invert(80%) sepia(0%) saturate(1%) hue-rotate(247deg) brightness(120%) contrast(80%)' : 'none'),
+                    width: 24,
+                    height: 24,
                   }}
                 />
               </ListItemIcon>
-              <ListItemText
-                primary={item.text}
-                sx={{
-                  opacity: 0,
-                  width: 0,
-                  transition: 'opacity 0.3s ease-in-out, width 0.3s ease-in-out',
-                  color: (item.path && location.pathname === item.path) ? 'white' : 'rgba(255, 255, 255, 0.5)', // Conditional color
-                  '& .MuiListItemText-primary': { fontWeight: (item.path && location.pathname === item.path) ? 600 : 400 },
-                }}
-              />
             </ListItem>
-          ))}
-        </Box>
+          ))
+        )}
       </List>
     </StyledDrawer>
   );

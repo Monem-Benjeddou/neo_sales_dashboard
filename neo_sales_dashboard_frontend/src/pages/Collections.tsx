@@ -1,102 +1,172 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  Card,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Button,
+  Box,
   Stack,
   Typography,
-  Box,
-  Chip,
-  TextField,
   CircularProgress,
-  InputAdornment,
-  Pagination
+  Button,
 } from '@mui/material';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
-import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined'; // Import Search icon
-import FilterListOutlinedIcon from '@mui/icons-material/FilterListOutlined';
-import { collectionsService } from '../services/collectionsService';
-import { CollectionListItem } from '../types/api';
+import { useAppDispatch, useAppSelector } from '../redux/hooks';
+import {
+  fetchCollections,
+  setPage,
+  setRowsPerPage,
+  setSearchTerm,
+  setCategoryFilter,
+  setStatusFilter,
+  setSelected,
+  selectAll,
+  clearSelected,
+  // Selectors
+  selectCollections,
+  selectCollectionsLoading,
+  selectCollectionsError,
+  selectCollectionsPagination,
+  selectCollectionsFilters,
+  selectCollectionsSelected
+} from '../redux/collectionsSlice';
+import { CollectionsTable } from '../components/Collections/CollectionsTable';
+import { CollectionsFilters } from '../components/Collections/CollectionsFilters';
+import { CollectionsPagination } from '../components/Collections/CollectionsPagination';
+import { CollectionsHeader } from '../components/Collections/CollectionsHeader';
+
+// Create memoized components to prevent unnecessary re-renders
+const MemoizedCollectionsTable = React.memo(CollectionsTable);
+const MemoizedCollectionsFilters = React.memo(CollectionsFilters);
+const MemoizedCollectionsPagination = React.memo(CollectionsPagination);
+const MemoizedCollectionsHeader = React.memo(CollectionsHeader);
 
 export const Collections: React.FC = () => {
-  const [collections, setCollections] = useState<CollectionListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showSearchInput, setShowSearchInput] = useState(false); // State to control search input visibility
-  const [searchTerm, setSearchTerm] = useState(''); // State for search term
-    const [page, setPage] = useState(1);
-  const [rowsPerPage] = useState(5);
-   useEffect(() => {
-    const fetchCollections = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await collectionsService.getCollectionsList();
-        if (data) {
-          setCollections(data);
-        } else {
-          setError('Failed to load collections data.');
-        }
-      } catch (err) {
-        console.error('Error fetching collections:', err);
-        setError('An error occurred while fetching collections data.');
-      } finally {
-        setLoading(false);
+  const dispatch = useAppDispatch();
+  
+  // Use selectors to access only the specific parts of state needed
+  const collections = useAppSelector(selectCollections);
+  const isLoading = useAppSelector(selectCollectionsLoading);
+  const error = useAppSelector(selectCollectionsError);
+  const { page, rowsPerPage, totalItems, totalPages } = useAppSelector(selectCollectionsPagination);
+  const { searchTerm, categoryFilter, statusFilter } = useAppSelector(selectCollectionsFilters);
+  const selected = useAppSelector(selectCollectionsSelected);
+
+  const [showSearchInput, setShowSearchInput] = useState(false);
+  const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(null);
+  const openFilterMenu = Boolean(filterAnchorEl);
+
+  const [localSearchInput, setLocalSearchInput] = useState(searchTerm);
+
+  // Effect to update localSearchInput when Redux searchTerm changes
+  useEffect(() => {
+    setLocalSearchInput(searchTerm);
+  }, [searchTerm]);
+
+  // Debounce effect for search term
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (localSearchInput !== searchTerm) {
+        dispatch(setSearchTerm(localSearchInput));
+        if (page !== 1) dispatch(setPage(1));
       }
+    }, 500);
+
+    return () => {
+      clearTimeout(handler);
     };
+  }, [localSearchInput, dispatch, searchTerm, page]);
 
-    fetchCollections();
-  }, []);
+  // Memoize the filters object
+  const filters = useMemo(() => ({
+    search: searchTerm,
+    category: categoryFilter,
+    status: statusFilter,
+    page,
+    pageSize: rowsPerPage
+  }), [searchTerm, categoryFilter, statusFilter, page, rowsPerPage]);
 
-  const handleChangePage = (event: React.ChangeEvent<unknown>, value: number) => {
-    setPage(value);
-  };
- const filteredCollections = collections.filter(collection =>
-    collection.collectionName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    collection.issuerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    collection.collectionId.toString().includes(searchTerm.toLowerCase())
-  );
-  const startIndex = (page - 1) * rowsPerPage;
-  const endIndex = startIndex + rowsPerPage;
-  const paginatedCollections = filteredCollections.slice(startIndex, endIndex);
-  const totalPages = Math.ceil(filteredCollections.length / rowsPerPage);
+  // Memoize the fetchData function
+  const fetchData = useCallback(() => {
+    dispatch(fetchCollections(filters));
+  }, [dispatch, filters]);
 
+  // Only fetch data when filters change
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  const commonTableCellStyles = {
-    color: '#FFFFFF',
-    border:'none',
-    backgroundColor :'rgba(32, 8, 91, 1)', 
-    backgroundImage : 'rgba(32, 8, 91, 1)'
-  };
+  // Memoize event handlers to prevent unnecessary re-renders
+  const handleChangePage = useCallback((event: React.ChangeEvent<unknown>, value: number) => {
+    dispatch(setPage(value));
+  }, [dispatch]);
 
-  const headerTableCellStyles = {
-    color: '#A0A0A0',
-    fontWeight: 600,
-    backgroundColor: 'transparent',
-    borderButtom: '1px solid rgba(108, 122, 160, 1)'
-  };
+  const handleChangeRowsPerPage = useCallback((value: number) => {
+    dispatch(setRowsPerPage(value));
+  }, [dispatch]);
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', color: 'white' }}>
-        <CircularProgress color="inherit" />
-        <Typography variant="h6" sx={{ ml: 2 }}>Loading Collections...</Typography>
-      </Box>
-    );
+  const handleCategoryFilterChange = useCallback((category: string) => {
+    dispatch(setCategoryFilter(category));
+    setFilterAnchorEl(null); // Close filter menu after selection
+  }, [dispatch, setFilterAnchorEl]);
+
+  const handleStatusFilterChange = useCallback((status: string) => {
+    dispatch(setStatusFilter(status));
+    setFilterAnchorEl(null); // Close filter menu after selection
+  }, [dispatch, setFilterAnchorEl]);
+
+  const handleSelectAllClick = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.checked) {
+      dispatch(selectAll());
+      return;
+    }
+    dispatch(clearSelected());
+  }, [dispatch]);
+
+  const handleClick = useCallback((event: React.MouseEvent<unknown>, id: number) => {
+    const selectedIndex = selected.indexOf(id);
+    let newSelected: number[] = [];
+
+    if (selectedIndex === -1) {
+      newSelected = newSelected.concat(selected, id);
+    } else if (selectedIndex === 0) {
+      newSelected = newSelected.concat(selected.slice(1));
+    } else if (selectedIndex === selected.length - 1) {
+      newSelected = newSelected.concat(selected.slice(0, -1));
+    } else if (selectedIndex > 0) {
+      newSelected = newSelected.concat(
+        selected.slice(0, selectedIndex),
+        selected.slice(selectedIndex + 1),
+      );
+    }
+    dispatch(setSelected(newSelected));
+  }, [dispatch, selected]);
+
+  const isSelected = useCallback((id: number) => selected.indexOf(id) !== -1, [selected]);
+
+  // Loading state component
+  const LoadingComponent = useMemo(() => (
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', color: 'white' }}>
+      <CircularProgress color="primary" size={40} thickness={4} />
+      <Typography variant="h6" sx={{ ml: 2, fontWeight: 500 }}>Loading Collections...</Typography>
+    </Box>
+  ), []);
+
+  // Error state component
+  const ErrorComponent = useMemo(() => (
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', color: '#FF5252' }}>
+      <Typography variant="h6" sx={{ fontWeight: 500 }}>Error: {error}</Typography>
+      <Button 
+        variant="contained" 
+        sx={{ ml: 2, backgroundColor: '#7F3FBF', '&:hover': { backgroundColor: '#AA6CD6' } }}
+        onClick={() => dispatch(fetchCollections({ page, pageSize: rowsPerPage }))}
+      >
+        Retry
+      </Button>
+    </Box>
+  ), [error, dispatch, page, rowsPerPage]);
+
+  if (isLoading && collections.length === 0) {
+    return LoadingComponent;
   }
 
-  if (error) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', color: 'red' }}>
-        <Typography variant="h6">Error: {error}</Typography>
-      </Box>
-    );
+  if (error && collections.length === 0) {
+    return ErrorComponent;
   }
 
   return (
@@ -105,238 +175,75 @@ export const Collections: React.FC = () => {
       style={{ border: '1px solid rgba(183, 127, 255, 0.3)', backgroundColor: 'rgba(25, 1, 80, 1)' }}
     >
       <Stack spacing={4}>
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            gap: { xs: 2, sm: 0 },
+        <MemoizedCollectionsHeader
+          showSearchInput={showSearchInput}
+          setShowSearchInput={setShowSearchInput}
+          localSearchInput={localSearchInput}
+          setLocalSearchInput={setLocalSearchInput}
+          handleSearchSubmit={() => {
+            dispatch(setSearchTerm(localSearchInput));
+            if (page !== 1) dispatch(setPage(1));
           }}
-        >
-          <Typography
-            variant="h5"
-            sx={{
-              fontWeight: 600,
-              fontSize: { xs: '20px', sm: '28px' },
-              color: '#FFFFFF',
-            }}
-          >
-            Total Created Collections
-          </Typography>
+          filterAnchorEl={filterAnchorEl}
+          setFilterAnchorEl={setFilterAnchorEl}
+          openFilterMenu={openFilterMenu}
+        />
 
-          <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, alignItems: 'center', flexWrap: 'wrap' }}>
-            {showSearchInput && (
-              <TextField
-                variant="outlined"
-                placeholder="Search collections..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                sx={{
-                  minWidth: { xs: '100%', sm: '200px' },
-                  '& .MuiOutlinedInput-root': {
-                    color: '#E0E0E0',
-                    '& fieldset': {
-                      borderColor: '#4A1E7A', // Border color for search input
-                    },
-                    '&:hover fieldset': {
-                      borderColor: '#7F3FBF', // Hover border color
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#AA6CD6', // Focused border color
-                    },
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: '#A0A0A0',
-                  },
-                  input: {
-                    padding: '10px 14px',
-                  },
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchOutlinedIcon sx={{ color: '#A0A0A0' }} />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            )}
+        <MemoizedCollectionsFilters
+          openFilterMenu={openFilterMenu}
+          filterAnchorEl={filterAnchorEl}
+          handleFilterClose={() => setFilterAnchorEl(null)}
+          categoryFilter={categoryFilter}
+          handleCategoryFilterChange={handleCategoryFilterChange}
+          statusFilter={statusFilter}
+          handleStatusFilterChange={handleStatusFilterChange}
+          rowsPerPage={rowsPerPage}
+          handleChangeRowsPerPage={handleChangeRowsPerPage}
+        />
 
-            <Button
-              variant="outlined"
-              onClick={() => setShowSearchInput(!showSearchInput)}
-              sx={{
-                color: '#FFFFFF',
-                backgroundColor: '#7F3FBF', // Vibrant purple for search toggle
-                border: 'none',
-                borderRadius: '8px',
-                '&:hover': {
-                  backgroundColor: '#AA6CD6',
-                },
-                minWidth: 'auto',
-                padding: '8px',
-              }}
-            >
-              <SearchOutlinedIcon />
-            </Button>
-
-            <Button
-              variant="outlined"
-              startIcon={<FilterListOutlinedIcon />}
-              size='medium'
-              sx={{
-                color: '#FFFFFF',
-                backgroundColor: '#7F3FBF', // Vibrant purple for filter button
-                border: 'none',
-                borderRadius: '8px',
-                '&:hover': {
-                  backgroundColor: '#AA6CD6',
-                },
-              }}
-            >
-              <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Filter</Box>
-            </Button>
-            <Button
-              variant="outlined"
-              sx={{
-                color: '#E0E0E0',
-                borderColor: '#AA6CD6', // Accent color for 'All' button border
-                borderRadius: '20px',
-                '&:hover': {
-                  backgroundColor: 'rgba(170, 108, 214, 0.1)',
-                  borderColor: '#AA6CD6',
-                },
-              }}
-            >
-              All
-            </Button>
-            <Button
-              variant="outlined"
-              sx={{
-                color: '#FFFFFF',
-                backgroundColor: '#AA6CD6', // Brighter accent for export button
-                border: 'none',
-                borderRadius: '8px',
-                '&:hover': {
-                  backgroundColor: '#CC99FF',
-                },
-              }}
-            >
-              Export Data
-            </Button>
+        {/* Table with loading indicator */}
+        {isLoading && collections.length > 0 && (
+          <Box sx={{ position: 'relative', minHeight: '200px' }}>
+            <Box sx={{ 
+              position: 'absolute', 
+              top: 0, 
+              left: 0, 
+              right: 0, 
+              bottom: 0, 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center',
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 1
+            }}>
+              <CircularProgress color="primary" size={40} thickness={4} />
+            </Box>
+            <MemoizedCollectionsTable
+              collections={collections}
+              selected={selected}
+              handleSelectAllClick={handleSelectAllClick}
+              handleClick={handleClick}
+              isSelected={isSelected}
+            />
           </Box>
-        </Box>
+        )}
 
-        <Card
-          sx={{
-            overflow: 'hidden',
-            boxShadow:'none'
-          }}
-        > 
-          <TableContainer   sx={{ backgroundColor: 'rgb(25, 1, 80, 1)', boxShadow: 'none',  }}>
-            <Table sx={{
-                minWidth: 650,
-                borderCollapse: 'separate',
-                borderSpacing: '0 15px',
-              }}>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: 'rgba(25, 1, 80, 1)', borderBottom: '5px solid black' }}> 
-                  <TableCell sx={{ ...headerTableCellStyles }}>Collection Id</TableCell>
-                  <TableCell sx={{ ...headerTableCellStyles, borderLeft: 'none' }}>Collection name</TableCell>
-                  <TableCell sx={{ ...headerTableCellStyles, borderLeft: 'none' }}>Issuer Name</TableCell>
-                  <TableCell sx={{ ...headerTableCellStyles, borderLeft: 'none' }}>Expected release date</TableCell>
-                  <TableCell sx={{ ...headerTableCellStyles, borderLeft: 'none' }}>Number Of Card Designs</TableCell>
-                  <TableCell sx={{ ...headerTableCellStyles, borderLeft: 'none' }}>Category</TableCell>
-                  <TableCell sx={{ ...headerTableCellStyles, borderLeft: 'none' }}>Status</TableCell>
-                  <TableCell sx={{ ...headerTableCellStyles, borderLeft: 'none' }}></TableCell>
-
-                </TableRow>
-              </TableHead>
-             <TableBody>
-                {collections.map((collection) => (
-                  <TableRow
-                    key={collection.collectionId}
-                    sx={{
-                        borderRadius: '8px',
-                        margin: '10px',
-                    }}
-                  >
-                    <TableCell sx={{
-                        ...commonTableCellStyles,
-                        borderTopLeftRadius: '25px', // Apply border-radius to the first cell for the row's left edge
-                        borderBottomLeftRadius: '25px',
-                    }}>#{collection.collectionId}</TableCell>
-                    <TableCell sx={commonTableCellStyles}>{collection.collectionName}</TableCell>
-                    <TableCell sx={commonTableCellStyles}>{collection.issuerName}</TableCell>
-                    <TableCell sx={commonTableCellStyles}>{collection.expectedReleaseDate}</TableCell>
-                    <TableCell sx={commonTableCellStyles}>{collection.numberOfCardDesigns}</TableCell>
-                    <TableCell sx={commonTableCellStyles}>
-                      <Typography sx={{fontWeight: 500 }}>
-                        {collection.category}
-                      </Typography>
-                    </TableCell>
-                    <TableCell sx={{
-                        ...commonTableCellStyles,
-                    }}>
-                      <Typography sx={{fontWeight: 500 }}>
-                        {collection.status}
-                      </Typography>
-                    </TableCell>
-                    <TableCell sx={{
-                        ...commonTableCellStyles,
-                        borderTopRightRadius: '25px',
-                        borderBottomRightRadius: '25px',
-                        marginRight:'10px'
-                    }}>
-                        <img src="/assets/icons/eye.svg" />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={handleChangePage}
-            variant="outlined"
-            shape="rounded"
-            sx={{
-              '& .MuiPaginationItem-root': {
-                color: '#F81DFB',
-                borderColor: '#F81DFB',
-                borderRadius:'30px',
-                '&.Mui-selected': {
-                  backgroundColor: '#F81DFB',
-                  color: '#FFFFFF',
-                  borderColor: '#F81DFB',
-                  '&:hover': {
-                    backgroundColor: '#F81DFB',
-                  },
-                },
-                '&:hover': {
-                  backgroundColor: 'rgba(248, 29, 251, 0.1)', // Changed hover background to be less opaque
-                },
-              },
-              '& .MuiPaginationItem-ellipsis': {
-                color: '#F81DFB',
-              },
-              // Target the next and previous buttons specifically
-              '& .MuiPaginationItem-previousNext': {
-                backgroundColor: 'rgba(255, 143, 31, 1)', // Set the color for next/previous icons
-                borderColor: 'rgba(255, 143, 31, 1)', // Set the border color for next/previous buttons
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 143, 31, 0.1)', // Hover effect for next/previous
-                  borderColor: 'rgba(255, 143, 31, 1)',
-                },
-              },
-            }}
+        {/* Table without loading indicator */}
+        {!isLoading && (
+          <MemoizedCollectionsTable
+            collections={collections}
+            selected={selected}
+            handleSelectAllClick={handleSelectAllClick}
+            handleClick={handleClick}
+            isSelected={isSelected}
           />
+        )}
 
-        </Box>
+        <MemoizedCollectionsPagination
+          page={page}
+          totalPages={totalPages}
+          handleChangePage={handleChangePage}
+        />
       </Stack>
     </div>
   );

@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, createRoutesFromElements } from 'react-router-dom';
-import { UNSAFE_DataRouterContext, UNSAFE_DataRouterStateContext } from 'react-router';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Login } from '../pages/Login';
 import { Logout } from '../pages/Logout';
 import { Dashboard } from '../pages/Dashboard';
 import { Collections } from '../pages/Collections';
 import { ProtectedRoute } from '../components/auth/ProtectedRoute';
 import { MainLayout } from '../components/layouts/MainLayout';
-import { useAppSelector, useAppDispatch } from '../redux/hooks';
+import { useAppDispatch } from '../redux/hooks';
 import { checkAuth } from '../redux/authSlice';
 import { LoadingSpinner } from '../components/ui';
 import { TokenManager } from '../utils/tokenManager';
+import { usePageReload } from '../hooks';
 const ProtectedPage: React.FC<{ element: React.ReactElement }> = ({ element }) => {
   return (
     <ProtectedRoute>
@@ -22,10 +22,10 @@ const ProtectedPage: React.FC<{ element: React.ReactElement }> = ({ element }) =
 };
 
 export const AppRouter: React.FC = () => {
-  const { isLoggedIn, isLoading: authStateLoading } = useAppSelector(state => state.auth);
   const dispatch = useAppDispatch();
   const [initializing, setInitializing] = useState(true);
   const [authCheckFailed, setAuthCheckFailed] = useState(false);
+  const { isReloading } = usePageReload();
 
   // Check for authentication on initial load
   useEffect(() => {
@@ -60,8 +60,8 @@ export const AppRouter: React.FC = () => {
     checkAuthentication();
   }, [dispatch]);
 
-  // Always show loading spinner during initial load to prevent white flash
-  if (initializing) {
+  // Always show loading spinner during initial load or page reload to prevent white flash
+  if (initializing || isReloading) {
     return <LoadingSpinner fullPage text="Loading application..." />;
   }
   

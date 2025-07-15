@@ -2,7 +2,7 @@ from collections import OrderedDict
 from datetime import datetime, timedelta, timezone as dt_timezone  # ✅ Correct import
 from django.utils import timezone
 from django.db.models import Sum
-
+from ..models import OrderItem
 from ..repositories.order_repository import OrderRepository
 from ..serializers import OrderSerializer
 
@@ -32,9 +32,30 @@ class OrderService:
 
         return list(sales_by_month.values())
 
-    def get_latest_orders_data(self, limit=4):
-        latest_orders_queryset = self.order_repo.get_latest(limit=limit)
-        return OrderSerializer(latest_orders_queryset, many=True).data
+    def get_latest_orders_data(self, limit=10):
+        latest_order_items = OrderItem.objects.select_related(
+            'order__user',
+            'card__collection'
+        ).order_by('-order__order_date')[:limit]
+
+        data = []
+        for item in latest_order_items:
+            order = item.order
+
+            formatted_date = timezone.localtime(order.order_date).strftime('%b %d, %I:%M %p')
+
+            data.append({
+                'order_id': f"#{order.id}",
+                'card_name': item.card.name,
+                'copy_number': item.copy_number if item.copy_number else 'N/A',
+                'order_date': formatted_date,
+                'payment': 'Transfer',
+                'order_value': float(item.price_at_purchase * item.quantity),
+                'status': order.status,
+                'action': 'View Details'
+            })
+
+        return data
 
     def get_total_sales_for_month(self, year: int, month: int) -> float:
         """
@@ -51,6 +72,5 @@ class OrderService:
             order_date__gte=start_of_month,
             order_date__lte=end_of_month,
             status='COMPLETED'
-        ).aggregate(total=Sum('order_value'))['total']
-
+        ).aggregate(total=Sum('order_value'))['total']  # Changed 'totalItems' to 'total'
         return float(total_sales) if total_sales is not None else 0.0

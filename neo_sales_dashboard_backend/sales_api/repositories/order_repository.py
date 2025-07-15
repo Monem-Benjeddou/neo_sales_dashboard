@@ -1,13 +1,18 @@
 from django.db.models import Sum, Avg
 from django.db.models.functions import TruncMonth
 from ..models import Order
+import uuid
 
 class OrderRepository:
     def get_all(self):
         return Order.objects.all()
 
     def get_by_id(self, order_id):
-        return Order.objects.get(id=order_id)
+        try:
+            uuid_id = uuid.UUID(order_id) if isinstance(order_id, str) else order_id
+            return Order.objects.get(id=uuid_id)
+        except (ValueError, Order.DoesNotExist):
+            return None
 
     def get_average_value(self):
         return Order.objects.aggregate(avg_value=Avg('order_value'))['avg_value']

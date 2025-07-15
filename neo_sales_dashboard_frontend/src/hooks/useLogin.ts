@@ -4,12 +4,12 @@ import { login, clearError } from '../redux/authSlice';
 import { LoginCredentials } from '../types';
 
 interface UseLoginResult {
-  username: string;
+  email: string;
   password: string;
-  usernameError: string | null;
+  emailError: string | null;
   passwordError: string | null;
   formError: string | null;
-  setUserName: (username: string) => void;
+  setemail: (email: string) => void;
   setPassword: (password: string) => void;
   handleSubmit: (event: React.FormEvent) => Promise<void>;
   clearFormError: () => void;
@@ -21,10 +21,10 @@ interface UseLoginResult {
 export const useLogin = (): UseLoginResult => {
   const dispatch = useAppDispatch();
   
-  const [username, setUserName] = useState('');
+  const [email, setemail] = useState('');
   const [password, setPassword] = useState('');
   
-  const [usernameError, setusernameError] = useState<string | null>(null);
+  const [emailError, setemailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -36,14 +36,14 @@ export const useLogin = (): UseLoginResult => {
   const handleSubmit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
     
-    setusernameError(null);
+    setemailError(null);
     setPasswordError(null);
     setFormError(null);
 
     let isValid = true;
 
-    if (!username) {
-      setusernameError('Please enter your username');
+    if (!email) {
+      setemailError('Please enter your email');
       isValid = false;
     } 
 
@@ -61,7 +61,7 @@ export const useLogin = (): UseLoginResult => {
 
     try {
       // Call the login action from Redux
-      const resultAction = await dispatch(login({ username, password }));
+      const resultAction = await dispatch(login({ email, password }));
       
       // Check if the login was rejected
       if (login.rejected.match(resultAction)) {
@@ -75,12 +75,12 @@ export const useLogin = (): UseLoginResult => {
   };
 
   return {
-    username,
+    email,
     password,
-    usernameError,
+    emailError,
     passwordError,
     formError,
-    setUserName,
+    setemail,
     setPassword,
     handleSubmit,
     clearFormError

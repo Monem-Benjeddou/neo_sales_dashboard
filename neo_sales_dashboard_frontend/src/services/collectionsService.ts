@@ -1,10 +1,31 @@
 import { apiClient } from '../services/apiClientV2';
-import { CollectionListItem, Collection, CreateCollectionRequest, UpdateCollectionRequest } from '../types/api';
+import { CollectionListItem, Collection, CreateCollectionRequest, UpdateCollectionRequest, PaginatedResult } from '../types/api';
+
+interface CollectionFilters {
+  search?: string;
+  category?: string;
+  status?: string;
+  page?: number;
+  pageSize?: number;
+}
 
 class CollectionsService {
-  public async getCollectionsList(): Promise<CollectionListItem[] | null> {
+  public async getCollectionsList(filters?: CollectionFilters): Promise<PaginatedResult<CollectionListItem> | null> {
     try {
-      const data = await apiClient.get<CollectionListItem[]>('/collections-list/');
+      // Build query parameters
+      const params: Record<string, string> = {};
+      
+      if (filters) {
+        if (filters.search) params.search = filters.search;
+        if (filters.category) params.category = filters.category;
+        if (filters.status) params.status = filters.status;
+        if (filters.page) params.page = filters.page.toString();
+        if (filters.pageSize) params.pageSize = filters.pageSize.toString();
+      }
+      
+      const data = await apiClient.get<PaginatedResult<CollectionListItem>>('/collections', {
+        params
+      });
       return data;
     } catch (error) {
       console.error('Failed to fetch collections list:', error);
@@ -14,7 +35,7 @@ class CollectionsService {
 
   public async getAllCollections(): Promise<Collection[] | null> {
     try {
-      const data = await apiClient.get<Collection[]>('/collections/');
+      const data = await apiClient.get<Collection[]>('/collections-list/');
       return data;
     } catch (error) {
       console.error('Failed to fetch all collections (DRF default):', error);
